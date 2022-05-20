@@ -2,9 +2,9 @@ extends Node2D
 
 
 var limit_x_min := 0
-var limit_x_max := 64
+var limit_x_max := 256*3
 var limit_y_min := 0
-var limit_y_max := 40
+var limit_y_max := 128
 var margin := 8
 
 # Called when the node enters the scene tree for the first time.
