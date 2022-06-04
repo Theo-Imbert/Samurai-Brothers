@@ -21,16 +21,22 @@ var was_on_floor = false
 var last_key_pressed = Vector2.RIGHT
 
 var nb_jump := 0
+export(int,1,2) var player_number:=1
+var nb=""
 
 onready var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 
-
+func _ready():
+	if player_number == 2:
+		nb="_2"
+	
 func change_state(new_state)->void:
 	if new_state == CONTROL:
-		pass
+		$CollisionShape2D.disabled = false
 	elif new_state == DASH:
 		velocity= last_key_pressed*DASH_SPEED
 		$Timer_dash.start()
+		$CollisionShape2D.disabled = true
 		
 	State = new_state
 
@@ -42,41 +48,43 @@ func _physics_process(delta):
 		var walk = 0.0
 		
 		if is_on_floor():
-			walk = WALK_FORCE *(Input.get_action_strength("ui_right") - Input.get_action_strength("ui_left"))
+			walk = WALK_FORCE *(Input.get_action_strength("ui_right"+nb) - Input.get_action_strength("ui_left"+nb))
 		else:
-			walk = WALK_FORCE *(Input.get_action_strength("ui_right") - Input.get_action_strength("ui_left"))
+			walk = WALK_FORCE *(Input.get_action_strength("ui_right"+nb) - Input.get_action_strength("ui_left"+nb))
 		# Slow down the player if they're not trying to move.
 		if abs(walk) < WALK_FORCE * 0.2:
 			if is_on_floor():
 				# The velocity, slowed down a bit, and then reassigned.
 				velocity.x = move_toward(velocity.x, 0, STOP_FORCE * delta)
 			else:
-				velocity.x = move_toward(velocity.x, 0, STOP_FORCE/5 * delta)
+				velocity.x = move_toward(velocity.x, 0, STOP_FORCE * delta)
 		else:
 			velocity.x += walk * delta
 		# Clamp to the maximum horizontal movement speed.
 		velocity.x = clamp(velocity.x, -WALK_MAX_SPEED, WALK_MAX_SPEED)
 
 		# Vertical movement code. Apply gravity.
-		velocity.y += gravity * delta * MASS
+		if not is_on_floor():
+			velocity.y += gravity * delta * MASS
 		
 		velocity.y = clamp(velocity.y, -2*FALL_MAX_SPEED, FALL_MAX_SPEED)
-		# Move based on the velocity and snap to the ground.
-		velocity = move_and_slide_with_snap(velocity, Vector2.DOWN, Vector2.UP)
 		
-		if (is_on_floor() or nb_jump>0) and Input.is_action_just_pressed("ui_up"):
+		var snap = Vector2.DOWN
+		if (is_on_floor() or nb_jump>0) and Input.is_action_just_pressed("ui_up"+nb):
 			velocity.y = -JUMP_SPEED
 			nb_jump -= 1
+			snap = Vector2.ZERO
 			#create_jump_particles()
+		
+		# Move based on the velocity and snap to the ground.
+		velocity = move_and_slide_with_snap(velocity, snap, Vector2.UP,true,4,0.9,false)
 		
 		if is_on_floor():
 			nb_jump = 1
 		
 		if Input.is_action_just_pressed("ui_dash"):
 			change_state(DASH)
-			
 		
-	
 	elif State == DASH:
 		
 		velocity = velocity.move_toward(last_key_pressed*DASH_FORCE, DASH_FORCE * delta)
@@ -99,10 +107,10 @@ func _process(delta):
 		was_on_floor = false
 	
 	if State == CONTROL:
-		if Input.is_action_pressed("ui_right"):
+		if Input.is_action_pressed("ui_right"+nb):
 			$AnimatedSprite.flip_h = false
 			$AnimatedSprite.play("run")
-		elif Input.is_action_pressed("ui_left"):
+		elif Input.is_action_pressed("ui_left"+nb):
 			$AnimatedSprite.flip_h = true
 			$AnimatedSprite.play("run")
 		else:
@@ -118,14 +126,15 @@ func _process(delta):
 
 
 func manage_looking_dir():
-	if Input.is_action_pressed("ui_up"):
-		last_key_pressed = Vector2.UP
-	elif Input.is_action_just_pressed("ui_right"):
-		last_key_pressed = Vector2.RIGHT
-	if Input.is_action_just_pressed("ui_left"):
+	if Input.is_action_pressed("ui_left"+nb):
 		last_key_pressed = Vector2.LEFT
-	elif Input.is_action_just_pressed("ui_down"):
-		last_key_pressed = Vector2.DOWN
+	else: #Input.is_action_just_pressed("ui_right"):
+		last_key_pressed = Vector2.RIGHT
+	
+#	if Input.is_action_just_pressed("ui_up"):
+#		last_key_pressed = Vector2.UP
+#	elif Input.is_action_just_pressed("ui_down"):
+#		last_key_pressed = Vector2.DOWN
 		
 
 func _on_Timer_dash_timeout():
